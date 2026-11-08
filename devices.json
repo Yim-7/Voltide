@@ -1,0 +1,26 @@
+[
+{
+"Name": "crociris T7",
+"VendorId": 14073,
+"ProductId": 61448,
+"ReportLength": 64,
+"Mode": 0,
+"RequestHex": "55 65 00 00",
+"BatteryIndex": 3,
+"ChargingIndex": -1,
+"Kind": 3,
+"MatchPath": "\\\\?\\hid#vid_36f9&pid_f008&mi_00&col03#7&410797b&0&0002#{4d1e55b2-f16f-11cf-88cb-001111000030}"
+},
+{
+"Name": "X7 Receiver 8K",
+"VendorId": 14073,
+"ProductId": 43552,
+"ReportLength": 65,
+"Mode": 0,
+"RequestHex": "00 AA 12 00 00",
+"BatteryIndex": 6,
+"ChargingIndex": 5,
+"Kind": 1,
+"MatchPath": "\\\\?\\hid#vid_36f9&pid_aa20&mi_03#7&57932ee&0&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}"
+}
+]

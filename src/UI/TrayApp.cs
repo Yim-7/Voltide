@@ -42,13 +42,14 @@ namespace Voltide.UI
                 }
             };
             _form.RefreshRequested += delegate { RefreshNow(); };
+            _form.AddDeviceRequested += delegate { OpenAddWizard(); };
 
             // force handle creation so cross-thread marshalling works immediately
             IntPtr handle = _form.Handle;
 
             _tray = new NotifyIcon();
             _tray.Icon = IconFactory.ToIcon(32);
-            _tray.Text = "Voltide";   // Windows tooltip on hover
+            _tray.Text = AppBrand.Name;   // Windows tooltip on hover
             _tray.Visible = true;
 
             _tray.MouseUp += delegate(object s, MouseEventArgs e)
@@ -92,7 +93,7 @@ namespace Voltide.UI
 
         // ------------------------------------------------------- refresh rate
 
-        private const string SettingsKey = @"Software\Voltide";
+        private static string SettingsKey { get { return AppBrand.SettingsKey; } }
 
         private static int LoadRefreshSeconds()
         {
@@ -154,6 +155,7 @@ namespace Voltide.UI
 
             panel.Dock = DockStyle.Fill;
             panel.QuitRequested += delegate { Application.Exit(); };
+            panel.AddDeviceRequested += delegate { OpenAddWizard(); };
 
             panel.AutostartEnabled = Autostart.IsSupported();
             panel.AutostartOn = Autostart.IsSupported() && Autostart.IsEnabled();
@@ -308,6 +310,23 @@ namespace Voltide.UI
                     RefreshNow();
                 }
             });
+        }
+
+        /// <summary>打开“添加设备”向导；关闭后立即刷新，让新设备上屏。</summary>
+        private void OpenAddWizard()
+        {
+            try
+            {
+                using (AddDeviceWizard wizard = new AddDeviceWizard())
+                {
+                    wizard.ShowDialog();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("打开向导失败：" + ex.Message);
+            }
+            RefreshNow();
         }
 
         public void ShowPanel()

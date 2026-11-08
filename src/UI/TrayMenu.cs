@@ -5,6 +5,7 @@ using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using Voltide.Core;
 
 namespace Voltide.UI
 {
@@ -12,6 +13,7 @@ namespace Voltide.UI
     {
         Level,      // name + bar + percentage
         Asleep,     // name + grey bar + 休眠中
+        AddDevice,  // 添加设备…
         Autostart,  // 开机启动 with a toggle
         Quit        // 退出应用
     }
@@ -93,6 +95,7 @@ namespace Voltide.UI
 
         public event EventHandler QuitRequested;
         public event EventHandler AutostartToggled;
+        public event EventHandler AddDeviceRequested;
 
         private bool _autostartOn;
         private float _switchT;                                  // 0 = off, 1 = on (animated)
@@ -110,7 +113,12 @@ namespace Voltide.UI
         /// where writing a Run entry would point at powershell.exe instead.</summary>
         public bool AutostartEnabled { get { return _autostartEnabled; } set { _autostartEnabled = value; } }
 
-        public int LineCount { get { return _rows.Count + 2; } }   // + autostart + quit
+        public int LineCount { get { return _rows.Count + 3; } }   // + add + autostart + quit
+
+        // 末尾三行的固定索引，避免散落的魔法数字。
+        private int AddRowIndex { get { return LineCount - 3; } }
+        private int AutostartRowIndex { get { return LineCount - 2; } }
+        private int QuitRowIndex { get { return LineCount - 1; } }
 
         public MenuPanel(List<MenuRow> rows, float scale,
                          Font nameFont, Font valueFont, Font cnFont, Font markFont)
@@ -121,7 +129,7 @@ namespace Voltide.UI
             _valueFont = valueFont;
             _cnFont = cnFont;
             _markFont = markFont;
-            _hover = new float[rows.Count + 2];
+            _hover = new float[rows.Count + 3];
 
             SetStyle(ControlStyles.OptimizedDoubleBuffer
                      | ControlStyles.AllPaintingInWmPaint
@@ -165,7 +173,7 @@ namespace Voltide.UI
             if (hit != _hot)
             {
                 _hot = hit;
-                Cursor = (hit >= _rows.Count && hit <= _rows.Count + 1) ? Cursors.Hand : Cursors.Default;
+                Cursor = (hit >= AddRowIndex && hit <= QuitRowIndex) ? Cursors.Hand : Cursors.Default;
                 StartAnim();
             }
             base.OnMouseMove(e);
@@ -185,14 +193,18 @@ namespace Voltide.UI
 
             int hit = RowAt(e.Y);
 
-            if (hit == _rows.Count && _autostartEnabled)
+            if (hit == AddRowIndex)
+            {
+                if (AddDeviceRequested != null) AddDeviceRequested(this, EventArgs.Empty);
+            }
+            else if (hit == AutostartRowIndex && _autostartEnabled)
             {
                 // Autostart row: flip the switch and let the host write the Run entry.
                 _autostartOn = !_autostartOn;
                 StartSwitchAnim();
                 if (AutostartToggled != null) AutostartToggled(this, EventArgs.Empty);
             }
-            else if (hit == _rows.Count + 1)
+            else if (hit == QuitRowIndex)
             {
                 if (QuitRequested != null) QuitRequested(this, EventArgs.Empty);
             }
@@ -289,7 +301,7 @@ namespace Voltide.UI
             {
                 sf.FormatFlags |= StringFormatFlags.NoWrap;
                 float baseline = 13.22f * s;
-                g.DrawString("VOLTIDE", _markFont, brush,
+                g.DrawString(AppBrand.Name, _markFont, brush,
                              ValueX * s, baseline - FontManager.Ascent(_markFont), sf);
             }
         }
@@ -313,9 +325,10 @@ namespace Voltide.UI
             float h = RowH * s;
 
             // Row order: devices..., autostart, quit.
-            bool isAutostart = index == _rows.Count;
-            bool isQuit = index == _rows.Count + 1;
-            MenuRow row = (isQuit || isAutostart) ? null : _rows[index];
+            bool isAdd = index == AddRowIndex;
+            bool isAutostart = index == AutostartRowIndex;
+            bool isQuit = index == QuitRowIndex;
+            MenuRow row = (isQuit || isAutostart || isAdd) ? null : _rows[index];
 
             // hover wash, kept faint so the grid stays intact
             float hover = _hover[index];
@@ -341,6 +354,16 @@ namespace Voltide.UI
             using (StringFormat sf = new StringFormat(StringFormat.GenericTypographic))
             {
                 sf.FormatFlags |= StringFormatFlags.NoWrap;
+
+                if (isAdd)
+                {
+                    using (SolidBrush brush = new SolidBrush(Lift(Accent, lift)))
+                    {
+                        g.DrawString("添加设备…", _cnFont, brush, TextX * s,
+                                     top + CjkBaseline * s - FontManager.Ascent(_cnFont), sf);
+                    }
+                    return;
+                }
 
                 if (isQuit)
                 {

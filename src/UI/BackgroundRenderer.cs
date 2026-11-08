@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Drawing.Text;
+using Voltide.Core;
 
 namespace Voltide.UI
 {
@@ -74,6 +75,17 @@ namespace Voltide.UI
         /// </summary>
         private static readonly PointF RefreshPivot = new PointF(794.73f, 53.01f);
 
+        // “添加设备”加号：位于刷新图标左侧，与刷新图标同高。
+        private static readonly PointF AddPivot = new PointF(735f, 53f);
+        private const float AddArm = 11f;     // 每条臂的半长
+        private const float AddThick = 4f;    // 条宽
+
+        private static RectangleF AddHit
+        {
+            // 命中盒带一点余量，与另外两个图标一致。
+            get { return Inflate(new RectangleF(AddPivot.X - AddArm, AddPivot.Y - AddArm, AddArm * 2f, AddArm * 2f), 10f); }
+        }
+
         private static readonly Dictionary<string, Bitmap> _backdropCache = new Dictionary<string, Bitmap>();
         private static readonly Dictionary<string, Bitmap> _wordmarkCache = new Dictionary<string, Bitmap>();
         private static readonly Dictionary<string, Bitmap[]> _vignetteCache = new Dictionary<string, Bitmap[]>();
@@ -125,6 +137,7 @@ namespace Voltide.UI
             float ax = (x - offsetX) / scale;
             float ay = y / scale;
 
+            if (AddHit.Contains(ax, ay)) return 3;
             if (RefreshHit.Contains(ax, ay)) return 1;
             if (CloseHit.Contains(ax, ay)) return 2;
             return 0;
@@ -335,9 +348,8 @@ namespace Voltide.UI
         }
 
         /// <summary>
-        /// "VOLTIDE" is manually kerned in the SVG (one tspan per letter group with an
-        /// absolute x), so it is drawn run by run at those exact positions rather than
-        /// as one string with letter-spacing.
+        /// 绘制品牌大标题。直接整词绘制（不再逐字母硬编码字距），
+        /// 这样更换任意品牌名都能正确显示，名称取自 <see cref="AppBrand.Name"/>。
         /// </summary>
         private static void DrawWordmark(Graphics g, float k)
         {
@@ -348,10 +360,7 @@ namespace Voltide.UI
             using (SolidBrush brush = new SolidBrush(WordmarkColor))
             using (StringFormat sf = new StringFormat(StringFormat.GenericTypographic))
             {
-                g.DrawString("V", font, brush, left, top, sf);
-                g.DrawString("O", font, brush, left + 24.44f * k, top, sf);
-                g.DrawString("L", font, brush, left + 53.55f * k, top, sf);
-                g.DrawString("TIDE", font, brush, left + 72.02f * k, top, sf);
+                g.DrawString(AppBrand.Name, font, brush, left, top, sf);
             }
         }
 
@@ -363,7 +372,8 @@ namespace Voltide.UI
         /// </summary>
         public static void DrawIcons(Graphics g, int width, float scale,
                                      float spinAngle, float refreshHot, float refreshPress,
-                                     float closeHot, float closePress)
+                                     float closeHot, float closePress,
+                                     float addHot, float addPress)
         {
             InitIcons();
 
@@ -371,8 +381,29 @@ namespace Voltide.UI
             g.TranslateTransform(width - DesignW * scale, 0f);
             g.ScaleTransform(scale, scale);
 
+            DrawPlus(g, addHot, addPress);
             DrawIcon(g, _refresh, RefreshPivot, spinAngle, refreshHot, refreshPress);
             DrawIcon(g, _closePath, BoxCentre(_closeBox), 0f, closeHot, closePress);
+
+            g.Restore(state);
+        }
+
+        private static void DrawPlus(Graphics g, float hot, float press)
+        {
+            float cx = AddPivot.X;
+            float cy = AddPivot.Y;
+
+            GraphicsState state = g.Save();
+            g.TranslateTransform(cx, cy);
+            if (press < 0.999f) g.ScaleTransform(press, press);
+            g.TranslateTransform(-cx, -cy);
+
+            using (SolidBrush brush = new SolidBrush(Blend(IconIdle, IconHot, hot)))
+            {
+                float t = AddThick / 2f;
+                g.FillRectangle(brush, cx - AddArm, cy - t, AddArm * 2f, AddThick);
+                g.FillRectangle(brush, cx - t, cy - AddArm, AddThick, AddArm * 2f);
+            }
 
             g.Restore(state);
         }

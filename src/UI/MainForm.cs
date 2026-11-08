@@ -95,10 +95,10 @@ namespace Voltide.UI
         private Point _dragStart;
 
         // header icons
-        private bool _hotRefresh, _hotClose;
-        private bool _pressRefresh, _pressClose;
-        private float _refreshHot, _closeHot;       // 0..1 eased
-        private float _refreshPress, _closePress;   // 0..1 eased
+        private bool _hotRefresh, _hotClose, _hotAdd;
+        private bool _pressRefresh, _pressClose, _pressAdd;
+        private float _refreshHot, _closeHot, _addHot;       // 0..1 eased
+        private float _refreshPress, _closePress, _addPress;   // 0..1 eased
         private bool _spinning;
         private float _spinT;                       // 0..1
         private bool _denying;
@@ -108,6 +108,7 @@ namespace Voltide.UI
         private long _lastRefreshAt = -999999;
 
         public event EventHandler RefreshRequested;
+        public event EventHandler AddDeviceRequested;
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
@@ -176,7 +177,7 @@ namespace Voltide.UI
             BackColor = BgColor;
             ShowInTaskbar = false;
             DoubleBuffered = true;
-            Text = "Voltide";
+            Text = AppBrand.Name;
 
             SetStyle(ControlStyles.AllPaintingInWmPaint |
                      ControlStyles.UserPaint |
@@ -822,8 +823,10 @@ namespace Voltide.UI
             bool uiFast = false;
             uiFast |= EaseTo(ref _refreshHot, _hotRefresh ? 1f : 0f, dt / HoverSeconds);
             uiFast |= EaseTo(ref _closeHot, _hotClose ? 1f : 0f, dt / HoverSeconds);
+            uiFast |= EaseTo(ref _addHot, _hotAdd ? 1f : 0f, dt / HoverSeconds);
             uiFast |= EaseTo(ref _refreshPress, _pressRefresh ? 1f : 0f, dt / PressSeconds);
             uiFast |= EaseTo(ref _closePress, _pressClose ? 1f : 0f, dt / PressSeconds);
+            uiFast |= EaseTo(ref _addPress, _pressAdd ? 1f : 0f, dt / PressSeconds);
 
             if (_spinning)
             {
@@ -979,7 +982,9 @@ namespace Voltide.UI
                 _refreshHot,
                 1f - (1f - PressScale) * _refreshPress,
                 _closeHot,
-                1f - (1f - PressScale) * _closePress);
+                1f - (1f - PressScale) * _closePress,
+                _addHot,
+                1f - (1f - PressScale) * _addPress);
         }
 
         /// <summary>
@@ -1419,7 +1424,7 @@ namespace Voltide.UI
 
         // ------------------------------------------------------------ input
 
-        private const int IconNone = 0, IconRefresh = 1, IconClose = 2;
+        private const int IconNone = 0, IconRefresh = 1, IconClose = 2, IconAdd = 3;
 
         /// <summary>Which icon is under a client-space point (IconNone = nothing).</summary>
         private int HitIcon(int x, int y)
@@ -1435,11 +1440,13 @@ namespace Voltide.UI
 
             bool hotRefresh = over == IconRefresh;
             bool hotClose = over == IconClose;
+            bool hotAdd = over == IconAdd;
 
-            if (hotRefresh != _hotRefresh || hotClose != _hotClose)
+            if (hotRefresh != _hotRefresh || hotClose != _hotClose || hotAdd != _hotAdd)
             {
                 _hotRefresh = hotRefresh;
                 _hotClose = hotClose;
+                _hotAdd = hotAdd;
                 Cursor = (over == IconNone) ? Cursors.Default : Cursors.Hand;
                 StartAnimating();
             }
@@ -1474,6 +1481,7 @@ namespace Voltide.UI
 
             _pressRefresh = over == IconRefresh;
             _pressClose = over == IconClose;
+            _pressAdd = over == IconAdd;
             StartAnimating();
         }
 
@@ -1490,6 +1498,7 @@ namespace Voltide.UI
             {
                 _pressRefresh = false;
                 _pressClose = false;
+                _pressAdd = false;
 
                 int rateHit = wasDragging ? -1 : RefreshHit(e.X, e.Y);
 
@@ -1500,6 +1509,10 @@ namespace Voltide.UI
                 }
                 else if (!wasDragging && over == IconRefresh) TryRefresh();
                 else if (!wasDragging && over == IconClose) Hide();
+                else if (!wasDragging && over == IconAdd)
+                {
+                    if (AddDeviceRequested != null) AddDeviceRequested(this, EventArgs.Empty);
+                }
             }
         }
 
@@ -1508,8 +1521,10 @@ namespace Voltide.UI
             base.OnMouseLeave(e);
             _hotRefresh = false;
             _hotClose = false;
+            _hotAdd = false;
             _pressRefresh = false;
             _pressClose = false;
+            _pressAdd = false;
             Cursor = Cursors.Default;
             StartAnimating();
         }

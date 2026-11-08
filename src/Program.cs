@@ -44,7 +44,7 @@ namespace Voltide
                 }
 
                 bool createdNew;
-                using (Mutex mutex = new Mutex(true, "Voltide-SingleInstance", out createdNew))
+                using (Mutex mutex = new Mutex(true, AppBrand.MutexId, out createdNew))
                 {
                     if (!createdNew)
                     {
@@ -83,7 +83,7 @@ namespace Voltide
         {
             try
             {
-                string path = Path.Combine(Path.GetTempPath(), "Voltide-error.txt");
+                string path = Path.Combine(Path.GetTempPath(), AppBrand.ErrorLog);
                 File.AppendAllText(path, DateTime.Now.ToString("HH:mm:ss") + "  " + msg + Environment.NewLine);
             }
             catch

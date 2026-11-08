@@ -1,6 +1,7 @@
 using System;
 using System.Windows.Forms;
 using Microsoft.Win32;
+using Voltide.Core;
 
 namespace Voltide.UI
 {
@@ -14,7 +15,7 @@ namespace Voltide.UI
     internal static class Autostart
     {
         private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-        private const string ValueName = "Voltide";
+        private static string ValueName { get { return AppBrand.Name; } }
 
         /// <summary>
         /// False when the current process is not Voltide.exe — the in-memory build
@@ -26,7 +27,7 @@ namespace Voltide.UI
             try
             {
                 string exe = Application.ExecutablePath;
-                return exe.EndsWith("Voltide.exe", StringComparison.OrdinalIgnoreCase);
+                return exe.EndsWith(AppBrand.ExeName, StringComparison.OrdinalIgnoreCase);
             }
             catch
             {

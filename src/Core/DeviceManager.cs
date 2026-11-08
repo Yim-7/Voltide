@@ -25,6 +25,8 @@ namespace Voltide.Core
 
         public DeviceManager()
         {
+            // 用户自定义设备优先，保证其规则先于内置厂商规则匹配。
+            _providers.Add(new CustomDeviceProvider());
             _providers.Add(new LogitechProvider());
             _providers.Add(new MchoseProvider());
             _providers.Add(new MchoseK7MouseProvider());
@@ -38,6 +40,7 @@ namespace Voltide.Core
             _providers.Add(new XInputProvider());
             _providers.Add(new RazerProvider());
             _providers.Add(new HeadsetProvider());
+            _providers.Add(new XiberiaT7Provider());
         }
 
         public List<DeviceSnapshot> Snapshot()
