@@ -350,6 +350,61 @@ namespace Voltide.UI
                     sb.AppendLine();
                 }
 
+                // 对 T7 厂商命令接口主动查询一次，记录完整帧，用于核对电量字节
+                // 以及是否存在电压/其他更精确字段（诊断只读一次，不影响正常刷新）。
+                sb.AppendLine("===== 主动查询完整帧 =====");
+                for (int i = 0; i < catalog.Count; i++)
+                {
+                    HidDeviceInfo h = catalog[i];
+                    if (h.VendorId != 0x36F9) continue;
+                    if (h.OutputReportLength < 64) continue;
+                    if (h.UsagePage != 0xFF90 && h.UsagePage != 0xFF00) continue;
+
+                    int frameLen = Math.Max(h.InputReportLength, h.OutputReportLength);
+                    sb.AppendLine("接口[" + i + "] 页" + h.UsagePage.ToString("X4") + " 帧长" + frameLen);
+                    try
+                    {
+                        using (HidSession session = new HidSession(h.Path, frameLen, frameLen, false))
+                        {
+                            session.Flush(40);
+                            byte[] request = new byte[frameLen];
+                            request[0] = 0x55;
+                            request[1] = 0x65;
+                            request[2] = 0x00;
+
+                            byte[] reply = null;
+                            if (session.Write(request, 200))
+                            {
+                                for (int k = 0; k < 10; k++)
+                                {
+                                    byte[] got = session.Read(200);
+                                    if (got == null) break;
+                                    if (got.Length > 1 && got[0] == 0x55 && got[1] == 0x65)
+                                    {
+                                        reply = got;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (reply != null)
+                            {
+                                sb.AppendLine("完整回复: " + HexUtil.Encode(reply));
+                                sb.AppendLine("索引3 = " + (reply.Length > 3 ? reply[3].ToString() : "缺失"));
+                            }
+                            else
+                            {
+                                sb.AppendLine("未应答");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        sb.AppendLine("查询异常: " + ex.Message);
+                    }
+                    sb.AppendLine();
+                }
+
                 string path = Path.Combine(Path.GetDirectoryName(DeviceConfigStore.ConfigPath()) ?? "", "hid-diag.txt");
                 File.WriteAllText(path, sb.ToString(), new UTF8Encoding(false));
                 MessageBox.Show("诊断信息已导出到：\r\n" + path +
