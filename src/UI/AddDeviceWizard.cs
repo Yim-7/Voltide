@@ -405,6 +405,71 @@ namespace Voltide.UI
                     sb.AppendLine();
                 }
 
+                // 全命令扫描：在 report id 0x55 下遍历 0x00-0xFF，记录每个有应答
+                // 命令的完整帧，用于发现 0x65 之外的电压/毫伏等字段（不限于 <=100 的字节）。
+                HidDeviceInfo t7 = null;
+                int t7Len = 64;
+                for (int i = 0; i < catalog.Count; i++)
+                {
+                    HidDeviceInfo h = catalog[i];
+                    if (h.VendorId != 0x36F9) continue;
+                    if (h.OutputReportLength < 64) continue;
+                    if (h.UsagePage != 0xFF90) continue;
+                    t7 = h;
+                    t7Len = Math.Max(h.InputReportLength, h.OutputReportLength);
+                    break;
+                }
+
+                if (t7 != null)
+                {
+                    sb.AppendLine("===== 全命令扫描（report id 55，遍历 00-FF，每命令独立会话）=====");
+                    int writeFail = 0, noReply = 0, withReply = 0;
+                    for (int cmd = 0; cmd <= 0xFF; cmd++)
+                    {
+                        try
+                        {
+                            byte[] request = new byte[t7Len];
+                            request[0] = 0x55;
+                            request[1] = (byte)cmd;
+                            request[2] = 0x00;
+
+                            // 每个命令独立打开/关闭会话，避免前一条未应答命令锁死写通道。
+                            using (HidSession session = new HidSession(t7.Path, t7Len, t7Len, false))
+                            {
+                                session.Flush(20);
+                                if (!session.Write(request, 150)) { writeFail++; continue; }
+
+                                byte[] reply = null;
+                                for (int k = 0; k < 3; k++)
+                                {
+                                    byte[] got = session.Read(100);
+                                    if (got == null) break;
+                                    reply = got;
+                                    if (got.Length > 1 && got[0] == 0x55) break;
+                                }
+
+                                if (reply == null) { noReply++; continue; }
+
+                                withReply++;
+                                bool hasData = false;
+                                for (int b = 2; b < reply.Length; b++)
+                                    if (reply[b] != 0) hasData = true;
+                                sb.AppendLine("CMD " + cmd.ToString("X2") +
+                                              (hasData ? " [含数据] " : " [空] ") +
+                                              HexUtil.Encode(reply));
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            writeFail++;
+                            sb.AppendLine("CMD " + cmd.ToString("X2") + " 异常: " + ex.Message);
+                        }
+                    }
+                    sb.AppendLine("全命令扫描完成（有回复 " + withReply + "，无回复 " +
+                                  noReply + "，写失败/异常 " + writeFail + "）");
+                    sb.AppendLine();
+                }
+
                 string path = Path.Combine(Path.GetDirectoryName(DeviceConfigStore.ConfigPath()) ?? "", "hid-diag.txt");
                 File.WriteAllText(path, sb.ToString(), new UTF8Encoding(false));
                 MessageBox.Show("诊断信息已导出到：\r\n" + path +
