@@ -587,6 +587,8 @@ namespace Voltide.UI
                 // meant nothing to the reader and only added a fourth look.
                 if (r.Sleeping || !r.Online || !r.Percent.HasValue) t.Status = "设备休眠中";
                 else if (r.Charging) t.Status = "电池充电中";
+                // 像 T7 这样只有本体百分比、没有充放电字段的设备，如实写“实时电量”，不默认成“放电中”。
+                else if (!r.ChargingKnown) t.Status = "实时电量";
                 else t.Status = "电池放电中";
 
                 t.Source = r.Detail != null ? r.Detail : "";
