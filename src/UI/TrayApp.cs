@@ -212,7 +212,16 @@ namespace Voltide.UI
                     else if (!string.IsNullOrEmpty(s.Info.Model)) row.Name = s.Info.Model;
                     else row.Name = s.Info.Brand;
 
-                    if (HasLevel(s))
+                    if (s.Reading.SupplyMode)
+                    {
+                        // 2.4G powered readout (XIBERIA T7): the dongle always answers
+                        // 100, which is not the battery charge. Say so instead of a
+                        // fake percentage.
+                        row.Kind = MenuRowKind.Asleep;
+                        row.Value = "供电中";
+                        row.GreyValue = true;
+                    }
+                    else if (HasLevel(s))
                     {
                         row.Kind = MenuRowKind.Level;
                         row.Percent = s.Reading.Percent.Value;

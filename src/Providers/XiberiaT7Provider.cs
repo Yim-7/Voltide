@@ -127,7 +127,15 @@ namespace Voltide.Providers
                     r.Percent = percent;
                     r.Level = BatteryMath.FromPercent(percent);
                     r.Online = true;
-                    r.ChargingKnown = false;
+                    r.ChargingKnown = true;
+
+                    // 2.4G 接收器连着时耳机一直处于供电/充电状态，固件对 0x65 固定回
+                    // 100（实测完整帧 55 65 00 64 后接 60 个 00，没有任何电压字段）。
+                    // 这个 100 是“供电口径”，不代表电池剩余容量：真实电量只能在蓝牙
+                    // 链路上读到。这里显式标记 SupplyMode，交给界面如实呈现，不再
+                    // 把它当作真实百分比或“放电中”。
+                    r.Charging = true;
+                    if (percent >= 100) r.SupplyMode = true;
                 }
             }
             catch (Exception ex)

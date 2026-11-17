@@ -40,8 +40,10 @@ namespace Voltide.Core
             _providers.Add(new XInputProvider());
             _providers.Add(new RazerProvider());
             _providers.Add(new HeadsetProvider());
-            // T7 耳机暂时下线：2.4G 供电状态下固件固定回 100%，无法反映真实电量，
-            // 待找到真实电压/电量命令后再重新启用。XiberiaT7Provider.cs 源码保留。
+            // T7 is back in: the 2.4G dongle constantly answers 100 (supply figure),
+            // so the provider now flags SupplyMode and the UI shows "USB / 2.4G 供电中"
+            // instead of a fake full battery.
+            _providers.Add(new XiberiaT7Provider());
             _providers.Add(new X7MouseProvider());
         }
 

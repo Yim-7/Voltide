@@ -45,6 +45,13 @@ namespace Voltide.Core
         public bool ChargingKnown = true;   // false when the reply could not confirm it
         public bool Online;
         /// <summary>
+        /// The device answered, but the level is the "powered by the 2.4G dongle"
+        /// figure rather than the real battery charge (XIBERIA T7 always reports
+        /// 100 % while its dongle feeds it). The UI must not present that as a
+        /// real percentage.
+        /// </summary>
+        public bool SupplyMode;
+        /// <summary>
         /// The dongle is present but the device did not answer (it sleeps between
         /// keystrokes / mouse moves). The card stays on screen with its last value.
         /// </summary>

@@ -578,14 +578,26 @@ namespace Voltide.UI
 
                 t.PctColor = (live && shown.HasValue) ? PrimaryFor(shown.Value) : TextMuted;
 
-                t.Pct = shown.HasValue
-                    ? (shown.Value >= 100 ? "Full" : shown.Value.ToString() + "%")
-                    : "--";
+                if (r.SupplyMode)
+                {
+                    // 2.4G powered: the device answers 100, but that is the supply
+                    // figure, not the battery charge. Show USB instead of "Full" so
+                    // nobody reads it as a real full battery (only BLE reports that).
+                    t.Pct = "USB";
+                    t.PctColor = TextMuted;
+                }
+                else
+                {
+                    t.Pct = shown.HasValue
+                        ? (shown.Value >= 100 ? "Full" : shown.Value.ToString() + "%")
+                        : "--";
+                }
 
                 // Three states only: charging, discharging, asleep. A device that is
                 // awake but has not answered yet is shown as asleep — the distinction
                 // meant nothing to the reader and only added a fourth look.
-                if (r.Sleeping || !r.Online || !r.Percent.HasValue) t.Status = "设备休眠中";
+                if (r.SupplyMode) t.Status = "2.4G 供电中";
+                else if (r.Sleeping || !r.Online || !r.Percent.HasValue) t.Status = "设备休眠中";
                 else if (r.Charging) t.Status = "电池充电中";
                 else t.Status = "电池放电中";
 
